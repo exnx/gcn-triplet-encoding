@@ -24,6 +24,23 @@ class Counter(object):
         return self.val.value
 
 
+def make_all_subdirs(keys):
+
+    for key in keys:
+
+        # need to make sure the subdir is created also
+        subdir = key.split('/')[0]
+        subdir_path = os.path.join(save_dir_path, subdir)
+
+        if not os.path.exists(subdir_path):
+
+            print('creating subdir: ', subdir_path)
+            os.makedirs(subdir_path)
+
+    print('done making all subdirs!')
+
+
+
 def build_geometry_graph(key):
     counter.add(1)
     feats = all_feats[key]
@@ -68,14 +85,13 @@ def build_geometry_graph(key):
     graph['edges'] = edges
     graph['feats'] = relas
 
-    # need to put file path in the name, probably need to create subdir also
+    key = key.split('.')[0]  # this is just for offline training
+
     np.save(os.path.join(save_dir_path, key), graph)
 
     if counter.value % 100 == 0 and counter.value >= 100:
 #    if counter.value % 2 == 0:
         print('{} / {}'.format(counter.value, num_images))
-
-
 
 
 
@@ -93,8 +109,7 @@ Directed = True  # directed or undirected graph
 out_dir_name = "geometry-{}directed".format('' if Directed else 'un')
 save_dir_path = os.path.join(args.out_path, out_dir_name)
 
-# '../graph_data/geometry_feats-{}directed.pkl'.format('' if Directed else 'un')
-
+# create parent graph dir
 if not os.path.exists(save_dir_path):
 
     print('creating dir: ', save_dir_path)
@@ -108,11 +123,9 @@ with open(args.geo_feats_path, 'rb') as f:
 num_images = len(all_feats)
 print("Loaded %d images...." % num_images)
 
-# for name, feats in all_feats.items():
+# make all the subdirs too to avoid exceptions
 
-#     print('name: {}, feats shape: {}'.format(name, feats.shape))
-
-# exit()
+make_all_subdirs(all_feats.keys())
 
 #%%
 p = Pool(20)
@@ -121,28 +134,23 @@ results = p.map(build_geometry_graph, all_feats.keys())
 print("Done")
 
 
-# try loading to make sure it works
-for key in all_feats.keys():
+# # try loading to make sure it works
+# for key in all_feats.keys():
 
-    graph_path = os.path.join(save_dir_path, key)
-    graph_path = graph_path + '.npy'
+#     graph_path = os.path.join(save_dir_path, key)
+#     graph_path = graph_path + '.npy'
 
-    rela = np.load(graph_path, allow_pickle=True)[()]
+#     rela = np.load(graph_path, allow_pickle=True)[()]
 
-    print('rela feats', rela['feats'].shape)
-    print('rela edges', rela['edges'].shape)
-
-    # exit()
+#     print('rela feats', rela['feats'].shape)
+#     print('rela edges', rela['edges'].shape)
 
 
 
-#for key in all_feats.keys():
-#    build_geometry_graph(key)
-
-
-
-
-
+## to run locally
+# python ~/Desktop/gcn-cnn-mod/graph_scripts/build_geometry_graph.py \
+#     --geo-feats-path /Users/ericnguyen/Desktop/fingerprinting/data_psbattle/psbattles_pos_neg/feats5/geometry_feats-directed.pkl \
+#     --out-path ~/Desktop/fingerprinting/data_psbattle/psbattles_pos_neg/feats5/
 
 
 

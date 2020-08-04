@@ -16,7 +16,7 @@ import time
 '''
 
 Reads a pickle of features from object detection and extractor, then will
-create geometric relationship features.
+create geometric relationship features, and save detection features by img
 
 input:
     .pickle file, from detection output
@@ -62,26 +62,6 @@ def convert_xywh_to_xyxy(box):
 #    if h <1:
 #        h=1    
     return([x_min, y_min, x_max, y_max])
-
-#def convert(old_pkl):
-#    import os 
-#    """
-#    Convert a Python 2 pickle to Python 3
-#    """
-#    # Make a name for the new pickle
-#    new_pkl = os.path.splitext(os.path.basename(old_pkl))[0]+"_p3.pkl"
-#
-#    # Convert Python 2 "ObjectType" to Python 3 object
-#    dill._dill._reverse_typemap["ObjectType"] = object
-#
-#    # Open the pickle using latin1 encoding
-#    with open(old_pkl, "rb") as f:
-#        loaded = pickle.load(f, encoding="latin1")
-#
-#    # Re-save as Python 3 pickle
-#    with open(new_pkl, "wb") as outfile:
-#        pickle.dump(loaded, outfile)
-
 
 
 def cal_geometry_feats(key):
@@ -257,6 +237,10 @@ def convert_to_dicts(obj_feats, seq_len):
 
         # store with img path as key, and img dict as value
         img_path = path_by_id[img_id]
+
+        # remove the file extension
+        img_path = img_path.split('.')[0]  # for offline training
+
         dict_of_img_dicts[img_path] = img_feat_dict
 
     return dict_of_img_dicts
@@ -282,8 +266,8 @@ out_path = args.out_path
 if not os.path.exists(out_path):
     os.makedirs(out_path)
 
-out_name = 'geometry_feats-{}directed.pkl'.format('' if Directed else 'un')
-save_path = os.path.join(out_path, out_name)
+
+# for saving detection feats
 
 with open(args.det_info_path, 'rb') as f:
     box_info = pickle.load(f)  # load
@@ -291,9 +275,27 @@ with open(args.det_info_path, 'rb') as f:
     # convert to dict
     box_info_dicts = convert_to_dicts(box_info, args.seq_len)
 
+det_feats_out_name = 'detection_feats_by_img.pkl'
+det_feats_out_path = os.path.join(out_path, det_feats_out_name)
+
+# save all feat out puts
+with open(det_feats_out_path, 'wb') as f:
+    pickle.dump(box_info_dicts, f)
+print("saved detection feats by img!")
+
+
+
+
+
+
+# for geo feats
 
 num_imgs = len(box_info_dicts)
 counter = Counter()
+
+
+geo_feats_out_name = 'geometry_feats-{}directed.pkl'.format('' if Directed else 'un')
+geo_feats_out_path = os.path.join(out_path, geo_feats_out_name)
 
 p = Pool(20)
 print("[INFO] Start")
@@ -308,15 +310,15 @@ print("[INFO] Finally %d processed" % len(all_feats))
 
 
 # save all feat out puts
-with open(save_path, 'wb') as f:
+with open(geo_feats_out_path, 'wb') as f:
     pickle.dump(all_feats, f)
-print("saved")
+print("saved geometry feats!")
 
 
 
 
 
-
+# for testing
 exit()
 
 # after saving, test open
@@ -380,9 +382,9 @@ with open(save_path, 'rb') as f:
 #     --out-path ~/Desktop/gcn-cnn/graph_data/
      
 ## small test set
-# python ~/Desktop/gcn-cnn/graph_scripts/cal_geometry_feat.py \
-#     --det-info-path /Users/ericnguyen/Desktop/fingerprinting/data_psbattle/psbattles_pos_neg/000/list_aug_feats.pickle \
-#     --out-path ~/Desktop/fingerprinting/data_psbattle/psbattles_pos_neg/000/
+# python ~/Desktop/gcn-cnn-mod/graph_scripts/cal_geo_feats_and_save_detection_feats.py \
+#     --det-info-path /Users/ericnguyen/Desktop/fingerprinting/data_psbattle/psbattles_pos_neg/feats5/raw_detection_feats_output.pickle \
+#     --out-path ~/Desktop/fingerprinting/data_psbattle/psbattles_pos_neg/feats5/
      
      
      
